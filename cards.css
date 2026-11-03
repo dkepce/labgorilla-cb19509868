@@ -263,3 +263,8 @@ label.btn .fi,button .fi{display:inline-block;vertical-align:-3px;margin-right:2
 @media print{
   #print .stlp{break-inside:avoid;margin-bottom:6pt}
 }
+.seg{display:inline-flex}
+.seg .btn{border-radius:0;margin-left:-1px}
+.seg .btn:first-child{border-radius:8px 0 0 8px;margin-left:0}
+.seg .btn:last-child{border-radius:0 8px 8px 0}
+.seg .btn.on{background:var(--acc);border-color:var(--acc);color:#fff;position:relative}

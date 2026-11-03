@@ -131,7 +131,9 @@
   const rotZ = t => { const c = Math.cos(t), s = Math.sin(t); return new Float32Array([c, s, 0, 0, -s, c, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]); };
   const tr = (x, y, z) => new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, y, z, 1]);
   const persp = (fov, a, nr, fr) => { const f = 1 / Math.tan(fov / 2); return new Float32Array([f / a, 0, 0, 0, 0, f, 0, 0, 0, 0, (fr + nr) / (nr - fr), -1, 0, 0, 2 * fr * nr / (nr - fr), 0]); };
-  const VIEWS = { iso: { yaw: -0.65, pitch: 1.0 }, top: { yaw: 0, pitch: 0 }, front: { yaw: 0, pitch: Math.PI / 2 }, side: { yaw: -Math.PI / 2, pitch: Math.PI / 2 } };
+  /* orthographic ("axo"): no vanishing point, parallel edges stay parallel; same visible size as perspective at that distance */
+  const ortho = (hh, a, nr, fr) => new Float32Array([1 / (a * hh), 0, 0, 0, 0, 1 / hh, 0, 0, 0, 0, -2 / (fr - nr), 0, 0, 0, -(fr + nr) / (fr - nr), 1]);
+  const VIEWS = { iso: { yaw: -Math.PI / 4, pitch: Math.acos(1 / Math.sqrt(3)) }, top: { yaw: 0, pitch: 0 }, front: { yaw: 0, pitch: Math.PI / 2 }, side: { yaw: -Math.PI / 2, pitch: Math.PI / 2 } };
   const hex = h => { const m = /^#?([0-9a-f]{6})$/i.exec(h || ""); const v = m ? parseInt(m[1], 16) : 0x8fa8c8; return [(v >> 16 & 255) / 255, (v >> 8 & 255) / 255, (v & 255) / 255]; };
 
   function makeRenderer(canvas, keep) {
@@ -141,12 +143,12 @@
     const R = { gl, pr, canvas, bp: gl.createBuffer(), bn: gl.createBuffer(), geo: null, loc: {} };
     ["P", "V", "R", "C", "S", "col"].forEach(k => { R.loc[k] = gl.getUniformLocation(pr, k); });
     R.load = geo => { R.geo = geo; gl.bindBuffer(gl.ARRAY_BUFFER, R.bp); gl.bufferData(gl.ARRAY_BUFFER, geo.pts, gl.STATIC_DRAW); gl.bindBuffer(gl.ARRAY_BUFFER, R.bn); gl.bufferData(gl.ARRAY_BUFFER, geo.nrm, gl.STATIC_DRAW); };
-    R.draw = (cam, color) => {
+    R.draw = (cam, color, axo) => {
       const w = canvas.width, h = canvas.height; gl.viewport(0, 0, w, h); gl.clearColor(0.965, 0.97, 0.985, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       const geo = R.geo; if (!geo) return; gl.enable(gl.DEPTH_TEST); gl.useProgram(pr);
       const c = [0, 1, 2].map(d => (geo.mn[d] + geo.mx[d]) / 2), rad = Math.hypot(geo.mx[0] - geo.mn[0], geo.mx[1] - geo.mn[1], geo.mx[2] - geo.mn[2]) / 2 || 1;
       const V = mul(tr(cam.px, cam.py, -cam.dist), mul(rotX(-cam.pitch), rotZ(cam.yaw)));
-      gl.uniformMatrix4fv(R.loc.P, false, persp(0.6, w / h, 0.05, 100)); gl.uniformMatrix4fv(R.loc.V, false, V);
+      gl.uniformMatrix4fv(R.loc.P, false, axo ? ortho(cam.dist * Math.tan(0.3), w / h, 0.01, 100) : persp(0.6, w / h, 0.05, 100)); gl.uniformMatrix4fv(R.loc.V, false, V);
       gl.uniformMatrix3fv(R.loc.R, false, new Float32Array([V[0], V[1], V[2], V[4], V[5], V[6], V[8], V[9], V[10]]));
       gl.uniform3fv(R.loc.C, c); gl.uniform1f(R.loc.S, 1 / rad); gl.uniform3fv(R.loc.col, hex(color));
       const ap = gl.getAttribLocation(pr, "p"), an = gl.getAttribLocation(pr, "n");
@@ -176,8 +178,11 @@
     const c = cardOf(v.card); if (!c || !v.r.geo) { v.r.draw(newCam(), ""); return; }
     const box = v.cv.parentNode, dpr = window.devicePixelRatio || 1;
     if (box) { const w = Math.round(box.clientWidth * dpr), h = Math.round(box.clientHeight * dpr); if (w && h && (v.cv.width !== w || v.cv.height !== h)) { v.cv.width = w; v.cv.height = h; } }
-    v.r.draw(camOf(c, v.fid), c.color);
+    v.r.draw(camOf(c, v.fid), c.color, isAxo(c));
   }
+  /* projection: saved on the card (also used for the PDF); on a locked entry it can still be switched for viewing */
+  const axoTmp = LB.tmp.stlAxo = LB.tmp.stlAxo || {};
+  const isAxo = c => (axoTmp[c.id] !== undefined ? axoTmp[c.id] : c.proj === "axo");
   function hookMouse(v) {
     let drag = null; const cv = v.cv, cam = () => { const c = cardOf(v.card); return c && camOf(c, v.fid); };
     cv.addEventListener("pointerdown", ev => { const k = cam(); if (!k) return; drag = { x: ev.clientX, y: ev.clientY, pan: ev.shiftKey || ev.button === 2 }; cv.setPointerCapture(ev.pointerId); ev.preventDefault(); });
@@ -219,7 +224,8 @@
     const add = '<label class="btn sm" style="cursor:pointer" title="Attach one or more .stl files (chip design, mould, holder…)">⬆ Attach STL…<input type="file" multiple accept=".stl,model/stl,application/sla" data-file="stlAttach" data-card="' + c.id + '" hidden ' + dis + "></label>";
     if (!fs.length) return '<div class="drop stldrop" data-dz="stlAttach" data-card="' + c.id + '"><div class="ic">' + icon("stl", 34) + "</div><div><b>Drop .stl files here</b> or " + add + '</div><div class="muted sm">For example the chip design or mould from your CAD program. The files are also kept on the Results tab.</div></div>';
     const cur = fs.find(f => f.id === c.cur);
-    const views = Object.keys(VIEWS).map(k => '<button class="btn sm" data-a="stlView" data-card="' + c.id + '" data-v="' + k + '">' + { iso: "3D", top: "Top", front: "Front", side: "Side" }[k] + "</button>").join("");
+    const ax = isAxo(c), proj = '<span class="seg" role="group" aria-label="Projection"><button class="btn sm' + (ax ? "" : " on") + '" data-a="stlProj" data-card="' + c.id + '" data-p="persp" aria-pressed="' + !ax + '" title="Perspective: far parts look smaller, like a photo">Perspective</button><button class="btn sm' + (ax ? " on" : "") + '" data-a="stlProj" data-card="' + c.id + '" data-p="axo" aria-pressed="' + ax + '" title="Axonometric: parallel lines stay parallel, sizes are not distorted (like a technical drawing)">Axo</button></span>';
+    const views = proj + Object.keys(VIEWS).map(k => '<button class="btn sm" data-a="stlView" data-card="' + c.id + '" data-v="' + k + '">' + { iso: "Iso", top: "Top", front: "Front", side: "Side" }[k] + "</button>").join("");
     return '<div class="row wrap stltabs" style="gap:6px" data-dz="stlAttach" data-card="' + c.id + '">' + fs.map(f => '<span class="stltab' + (f.id === c.cur ? " on" : "") + '"><button class="link sm" data-a="stlPick" data-card="' + c.id + '" data-fid="' + f.id + '" title="' + esc(f.name) + '">' + esc(K.cut(f.name, 28)) + '</button><button class="x" data-a="stlRm" data-card="' + c.id + '" data-fid="' + f.id + '" ' + dis + ' aria-label="Remove from this card" title="Remove from this card (stays on the Results tab)">×</button></span>').join("") + add + "</div>" +
       '<div class="stlbox" data-card="' + c.id + '"></div>' +
       '<div class="row wrap" style="gap:6px">' + views + '<span class="muted sm grow">Drag to turn · Shift-drag or right-drag to move · scroll to zoom · double-click to reset</span>' +
@@ -227,14 +233,14 @@
       '<div class="muted sm stlinfo" data-card="' + c.id + '">Loading ' + esc(cur.name) + "…</div>" +
       field("About this file", '<input type="text" data-b="' + P + ".labels." + cur.id + '" value="' + esc(c.labels[cur.id] || "") + '" placeholder="e.g. Chamber layer v3, 200 µm channels" ' + dis + ' autocomplete="off">');
   }
-  async function snapshot(geo, cam, color) {
+  async function snapshot(geo, cam, color, axo) {
     const cv = document.createElement("canvas"); cv.width = 900; cv.height = 520; const r = makeRenderer(cv, true); if (!r) return "";
-    r.load(geo); r.draw(cam, color); const u = cv.toDataURL("image/png"); try { r.gl.getExtension("WEBGL_lose_context").loseContext(); } catch (x) { } return u;
+    r.load(geo); r.draw(cam, color, axo); const u = cv.toDataURL("image/png"); try { r.gl.getExtension("WEBGL_lose_context").loseContext(); } catch (x) { } return u;
   }
   async function stlPrint(e, c) {
     let h = "";
     for (const f of stlFiles(e, c)) {
-      const geo = await geoOf(f), img = geo ? await snapshot(geo, camOf(c, f.id), c.color) : "";
+      const geo = await geoOf(f), img = geo ? await snapshot(geo, camOf(c, f.id), c.color, isAxo(c)) : "";
       h += '<div class="stlp">' + (img ? '<figure class="figp"><img src="' + img + '" alt="' + esc(f.name) + '"></figure>' : "") +
         kv([["File", f.name + " (" + U.size(f.size || 0) + ")"], ["About", c.labels[f.id]], ["Size (X × Y × Z)", geo ? dims(geo) + " (file units, usually mm)" : "could not be read"], ["Triangles", geo ? geo.n.toLocaleString() : ""], ["Solid volume", geo ? "≈ " + g(geo.vol) + " mm³" : ""]]) + "</div>";
     }
@@ -251,10 +257,15 @@
   };
   A.stlPick = el => { const c = cardOf(el.dataset.card); if (!c) return; c.cur = el.dataset.fid; LB.save(); LB.render(); };
   A.stlRm = el => { const e = live(), c = e && cardOf(el.dataset.card); if (!c) return; c.files = c.files.filter(id => id !== el.dataset.fid); if (c.cur === el.dataset.fid) c.cur = c.files[0] || ""; LB.save(); LB.render(); };
+  A.stlProj = el => {
+    const c = cardOf(el.dataset.card); if (!c) return; const axo = el.dataset.p === "axo"; axoTmp[c.id] = axo;
+    if (live() && c.proj !== el.dataset.p) { c.proj = el.dataset.p; LB.save(); }
+    LB.render();
+  };
   A.stlView = el => { const c = cardOf(el.dataset.card); if (!c) return; cams[c.id + ":" + c.cur] = newCam(el.dataset.v); const v = viewers[c.id]; if (v) redraw(v); };
 
   Object.assign(TYPES, {
     pdms: { label: "PDMS batch", desc: "Mixing ratio, degas and cure timers, bonding", make: () => ({ title: "PDMS batch", product: "Sylgard 184", lot: "", mould: "", made: "", ratio: "10", total: "", area: "", thick: "", loss: "10", degas: "30", cureT: "65", cureD: "2", cureU: "h", bond: "", bondTo: "", power: "", btime: "", post: "", leak: "", chips: "", good: "", done: {}, tmr: {} }), body: pdmsBody, print: pdmsPrint, data: c => !!(c.total || c.area || c.lot || c.mould || c.chips || c.bond || Object.values(c.done || {}).some(Boolean)) },
-    stl: { label: "3D model (STL)", desc: "Look at chip designs and moulds in 3D", make: () => ({ title: "3D model", files: [], cur: "", color: "#7fa3d1", labels: {} }), body: stlBody, print: stlPrint, data: c => c.files.length > 0 }
+    stl: { label: "3D model (STL)", desc: "Look at chip designs and moulds in 3D", make: () => ({ title: "3D model", files: [], cur: "", color: "#7fa3d1", labels: {}, proj: "persp" }), body: stlBody, print: stlPrint, data: c => c.files.length > 0 }
   });
 })(window.LB);
