@@ -117,9 +117,11 @@
     if (!isFinite(mn[0])) return null;
     return { pts, nrm, n, mn, mx, vol: Math.abs(vol), area };
   }
+  /* a failed read is not remembered: right after start-up the lab book folder may not be connected yet */
   const geoCache = {};
   function geoOf(ref) {
-    if (!geoCache[ref.id]) geoCache[ref.id] = LB.fileBlob(ref).then(b => (b ? b.arrayBuffer() : null)).then(buf => (buf ? parseStl(buf) : null)).catch(() => null);
+    if (!geoCache[ref.id]) geoCache[ref.id] = LB.fileBlob(ref).then(b => (b ? b.arrayBuffer() : null)).then(buf => (buf ? parseStl(buf) : null)).catch(() => null)
+      .then(g => { if (!g) delete geoCache[ref.id]; return g; });
     return geoCache[ref.id];
   }
 
@@ -207,13 +209,22 @@
       v.fid = ref.id; v.r.geo = null; redraw(v); box.classList.add("loading");
       geoOf(ref).then(geo => {
         box.classList.remove("loading"); if (v.fid !== ref.id) return;
-        if (!geo) { if (info) info.textContent = "This file could not be read as STL" + (ref.loc === "dir" && !LB.file.dir ? " (reconnect the lab book folder first)" : "") + "."; return; }
+        if (!geo) {
+          const i3 = document.querySelector('.stlinfo[data-card="' + c.id + '"]') || info; if (!i3) return;
+          if (ref.loc === "dir" && LB.file.state === "needs") i3.innerHTML = 'The 3D file is in your lab book folder, which needs your permission again. <button class="link sm" data-a="fileReconnect">Reconnect</button>';
+          else if (ref.loc === "dir" && !LB.file.filesDir) i3.textContent = "Waiting for the lab book folder…";
+          else i3.textContent = "This file could not be read as STL.";
+          return;
+        }
         v.r.load(geo); redraw(v); const i2 = document.querySelector('.stlinfo[data-card="' + c.id + '"]'); if (i2) i2.innerHTML = infoLine(geo);
       });
     });
   }
   const baseRender = LB.render;
   LB.render = function () { const r = baseRender.apply(this, arguments); try { hydrateStl(); } catch (x) { } return r; };
+  /* when the folder (re)connects, try again to load models that could not be read */
+  const baseFileState = LB.onFileState;
+  LB.onFileState = function () { const r = baseFileState.apply(this, arguments); if (LB.file.state === "ok" && Object.values(viewers).some(v => !v.r.geo)) { Object.values(viewers).forEach(v => { if (!v.r.geo) v.fid = ""; }); try { hydrateStl(); } catch (x) { } } return r; };
   window.addEventListener("resize", () => Object.values(viewers).forEach(v => { if (v.cv.isConnected) redraw(v); }));
 
   const dims = geo => [0, 1, 2].map(d => g(geo.mx[d] - geo.mn[d])).join(" × ");
