@@ -332,3 +332,15 @@ button.exp:hover{filter:brightness(.96)}
 .dktip.on{opacity:1}
 .lcard.flash{box-shadow:0 0 0 3px var(--acc-m)}
 .lcard{transition:box-shadow .4s}
+
+/* right pane: Notes tab (section notes moved here from the middle), four tabs fit in 290px */
+.right .tabs{gap:0}
+.right .tab{padding:6px 6px;font-size:12px;white-space:nowrap}
+.right .notes{padding:10px 12px;border-radius:10px}
+.right .notes textarea{min-height:220px;resize:vertical;font-size:13px;line-height:1.5}
+.nlink{display:flex;flex-direction:column;gap:2px;text-align:left;border:1px solid #efe6bd;background:#fffdf3;border-radius:8px;padding:7px 10px;font-size:12px}
+.nlink:hover{border-color:#d9c97a}
+.nlink b{color:#6b5a12}
+.nlink span{color:var(--soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* the card dock now sits between the middle and the right pane */
+.dock{border-left:1px solid var(--line)}

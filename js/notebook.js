@@ -137,10 +137,12 @@
     return '<div class="card"><h3>Conclusion &amp; next steps</h3>' + T(8, e.concl, 'aria-label="Conclusion" placeholder="What did you learn? What happens next?" data-b="' + P + '.concl" data-log="Edited conclusion" ' + dis) +
       '<div class="row muted sm">Ready? <button class="btn dark sm" data-a="toggleLock">' + (e.locked ? "Unlock" : "Sign &amp; lock") + "</button></div></div>";
   }
-  function notesCard(e) {
-    const dis = e.locked ? "disabled" : "";
-    return '<div class="notes"><div class="row"><b style="color:#6b5a12">Notes</b><span class="sm" style="color:#8f7d2e">· ' + SEC[LB.ui.sec] + ' · scratch space for thoughts and reminders</span></div>' +
-      T(3, e.sn[LB.ui.sec] || "", 'aria-label="Section notes" placeholder="Jot down thoughts, questions or reminders for this section…" data-b="D.entries.' + e.id + ".sn." + LB.ui.sec + '" data-log="Edited notes" ' + dis) + "</div>";
+  /* section notes live in the right pane (Notes tab); they follow the section that is open in the middle */
+  function notesPane(e) {
+    const dis = e.locked ? "disabled" : "", others = visSecs(e).filter(i => i !== LB.ui.sec && (e.sn[i] || "").trim());
+    return '<div class="notes"><div class="row"><b style="color:#6b5a12">' + SEC[LB.ui.sec] + '</b><span class="sm" style="color:#8f7d2e">scratch space for thoughts and reminders</span></div>' +
+      T(12, e.sn[LB.ui.sec] || "", 'aria-label="Section notes" placeholder="Jot down thoughts, questions or reminders for this section…" data-b="D.entries.' + e.id + ".sn." + LB.ui.sec + '" data-log="Edited notes" ' + dis) + "</div>" +
+      (others.length ? '<div class="lbl">Notes in other sections</div>' + others.map(i => '<button class="nlink" data-a="setSec" data-n="' + i + '"><b>' + SEC[i] + "</b><span>" + esc(e.sn[i].trim().slice(0, 90)) + "</span></button>").join("") : "");
   }
   function emptyState() {
     return '<div class="empty"><div class="h" style="font-size:20px">Welcome to your lab book</div><div>Create your first entry to get started, or look around with example data.</div><div class="row"><button class="btn pri" data-a="newEntry">+ New entry</button><button class="btn" data-a="demo">Load example data</button></div>' +
@@ -151,7 +153,7 @@
     if (!e) return '<main class="main">' + emptyState() + "</main>";
     if (!visSecs(e).includes(LB.ui.sec)) LB.ui.sec = 0;
     const body = [overview, materials, procedure, results, conclusion][LB.ui.sec](e);
-    return '<main class="main">' + head(e) + secBar(e) + '<div class="mscroll" data-scroll="main">' + body + (LB.ui.sec === 0 ? LB.refsCard("entry", e, e.id) : "") + notesCard(e) + "</div></main>";
+    return '<main class="main">' + head(e) + secBar(e) + '<div class="mscroll" data-scroll="main">' + body + (LB.ui.sec === 0 ? LB.refsCard("entry", e, e.id) : "") + "</div></main>";
   }
 
   /* ---------- right panel ---------- */
@@ -159,9 +161,10 @@
   function right() {
     const e = LB.cur(); if (!e) return "";
     const D = LB.D, tab = LB.ui.tab;
-    const TABS = ["Inventory", "Comments" + (e.comments.length ? " (" + e.comments.length + ")" : ""), "History"];
+    const TABS = ["Inventory", "Comments" + (e.comments.length ? " (" + e.comments.length + ")" : ""), "History", "Notes" + ((e.sn[LB.ui.sec] || "").trim() ? " •" : "")], ORDER = [3, 0, 1, 2];
     let body = "";
-    if (tab === 0) {
+    if (tab === 3) body = notesPane(e);
+    else if (tab === 0) {
       body = '<div class="muted sm">Materials used in this entry, taken from your lab inventory.</div>' + e.mats.map(m => {
         const it = D.items.find(i => i.id === m.id); if (!it) return "";
         const u = []; if (m.used) u.push("used " + m.used + " " + m.unit); if (m.left) u.push(m.left + " " + m.unit + " left");
@@ -175,10 +178,10 @@
       body = e.hist.map(h => '<div class="hist"><time>' + U.stampStr(h.at) + "</time><span>" + esc(h.msg) + "</span></div>").join("") + '<div class="muted sm" style="padding-top:6px">Every change is kept with its time.</div>';
     }
     const up = LB.upcoming(3);
-    return '<aside class="right" data-scroll="right"><div class="tabs">' + TABS.map((t, i) => '<button class="tab' + (i === tab ? " on" : "") + '" data-a="setTab" data-n="' + i + '">' + t + "</button>").join("") + '</div><div class="col" style="gap:8px">' + body + "</div>" +
+    return '<aside class="right" data-scroll="right"><div class="tabs">' + ORDER.map(i => '<button class="tab' + (i === tab ? " on" : "") + '" data-a="setTab" data-n="' + i + '">' + TABS[i] + "</button>").join("") + '</div><div class="col" style="gap:8px">' + body + "</div>" +
       '<div class="next"><div class="lbl">Next up</div>' + (up.length ? up.map(v => '<div class="row sm" style="align-items:baseline"><span class="mono" style="color:var(--acc-d);white-space:nowrap">' + U.fmt(v.date, false) + "</span><span>" + esc(v.title) + "</span></div>").join("") : '<div class="muted sm">Nothing planned.</div>') + '<button class="link sm" data-a="nav" data-v="calendar">Open calendar →</button></div></aside>';
   }
-  LB.views.notebook = () => side() + main() + right() + (LB.cur() ? LB.cardsDock(LB.cur()) : "");
+  LB.views.notebook = () => side() + main() + (LB.cur() ? LB.cardsDock(LB.cur()) : "") + right();
 
   /* ---------- actions ---------- */
   const entryOK = () => { const e = LB.cur(); return e && !e.locked ? e : null; };
