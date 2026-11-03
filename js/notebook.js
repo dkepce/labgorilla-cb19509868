@@ -181,7 +181,7 @@
     return '<aside class="right" data-scroll="right"><div class="tabs">' + ORDER.map(i => '<button class="tab' + (i === tab ? " on" : "") + '" data-a="setTab" data-n="' + i + '">' + TABS[i] + "</button>").join("") + '</div><div class="col" style="gap:8px">' + body + "</div>" +
       '<div class="next"><div class="lbl">Next up</div>' + (up.length ? up.map(v => '<div class="row sm" style="align-items:baseline"><span class="mono" style="color:var(--acc-d);white-space:nowrap">' + U.fmt(v.date, false) + "</span><span>" + esc(v.title) + "</span></div>").join("") : '<div class="muted sm">Nothing planned.</div>') + '<button class="link sm" data-a="nav" data-v="calendar">Open calendar →</button></div></aside>';
   }
-  LB.views.notebook = () => side() + main() + (LB.cur() ? LB.cardsDock(LB.cur()) : "") + right();
+  LB.views.notebook = () => side() + main() + right() + (LB.cur() ? LB.cardsDock(LB.cur()) : "");
 
   /* ---------- actions ---------- */
   const entryOK = () => { const e = LB.cur(); return e && !e.locked ? e : null; };
