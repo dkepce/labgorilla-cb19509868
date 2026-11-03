@@ -342,5 +342,3 @@ button.exp:hover{filter:brightness(.96)}
 .nlink:hover{border-color:#d9c97a}
 .nlink b{color:#6b5a12}
 .nlink span{color:var(--soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-/* the card dock now sits between the middle and the right pane */
-.dock{border-left:1px solid var(--line)}
