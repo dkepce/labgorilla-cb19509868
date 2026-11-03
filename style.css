@@ -342,3 +342,7 @@ button.exp:hover{filter:brightness(.96)}
 .nlink:hover{border-color:#d9c97a}
 .nlink b{color:#6b5a12}
 .nlink span{color:var(--soft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* scroll bar sits flush against the right pane: no right padding on .main, the header rows keep their own */
+.main{padding-right:0}
+.main>.ehead,.main>.secs{padding-right:20px}
+.mscroll{padding-right:12px}
