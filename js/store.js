@@ -3,7 +3,7 @@
   const U = LB.U;
 
   /* ---------- defaults & loading ---------- */
-  const DEFAULT_S = { theme: "indigo", warnDays: 30 };
+  const DEFAULT_S = { theme: "indigo", warnDays: 30, mode: "light" };
   const DEFAULT_UI = { view: "notebook", cur: "", sec: 0, tab: 0, calMode: "month", sel: "", openExp: {}, openProj: {}, exportOpts: { aim: true, materials: true, procedure: true, chip: true, cards: true, results: true, files: true, conclusion: true, notes: true, comments: true, history: true, refs: true } };
   const TYPES = ["cell line", "reagent", "medium", "chips", "drug", "antibody"];
   const SECTIONS = ["Overview", "Materials", "Procedure", "Results", "Conclusion"];

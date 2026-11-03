@@ -37,3 +37,7 @@ Open http://localhost:8123 in Chrome/Edge/Brave (the install/offline parts need 
 
 ## `.lbk` file format
 JSON: `{ app: "labgorilla", version: 1, saved, settings, data }` where `data` has `projects, experiments, entries, protocols, items, types, events`. Each item may carry `expires` (`YYYY-MM-DD` or empty); `settings.warnDays` is how many days ahead an expiry is flagged (default 30).
+
+## Dark mode
+
+`dark.css` is generated: after changing colours in `style.css` or `cards.css`, run `node tools/make-dark-css.js`. The script maps every fixed light colour to a dark one (backgrounds, borders and text separately) under `body.dark #app`; print stays light. Hand-written dark rules and the dark Glass themes live at the end of that script.

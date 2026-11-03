@@ -11,21 +11,37 @@
     teal: { name: "Teal", kind: "one color", acc: "#0f766e", accD: "#115e59", accS: "#e3f3f1", accM: "#8fd3cb", bar: "#10302e", bar2: "#1c4642" },
     plum: { name: "Plum", kind: "one color", acc: "#a23b72", accD: "#7c2a58", accS: "#f8e8f1", accM: "#e0a6c6", bar: "#2a1726", bar2: "#402338" },
     sunset: { name: "Orange and navy", kind: "two colors", acc: "#d9480f", accD: "#a8380b", accS: "#fdeee5", accM: "#f1b08e", bar: "#1d3b53", bar2: "#2c5473" },
-    graphite: { name: "Graphite", kind: "neutral", acc: "#374151", accD: "#1f2937", accS: "#eceef1", accM: "#aab0bb", bar: "#111827", bar2: "#1f2937" },
+    graphite: { name: "Graphite", kind: "neutral", acc: "#374151", accDark: "#6b7689", accD: "#1f2937", accS: "#eceef1", accM: "#aab0bb", bar: "#111827", bar2: "#1f2937" },
     /* "Glass" themes (same look as Hedgehog's, from the Project Hub "Verlauf + Glas" design): a colour gradient behind
        the window, side panels and cards see-through with a blur (body.glass in style.css). grad = [corner colour, base colour] */
     glassRose: { name: "Glass · Rose", kind: "glass", glass: true, grad: ["#f3a6b5", "#f5f6f9"], acc: "#c0506a", accD: "#8f2f47", accS: "#fbe9ee", accM: "#eba9b8", bar: "#3a2230", bar2: "#52323f" },
     glassSky: { name: "Glass · Sky", kind: "glass", glass: true, grad: ["#93bff0", "#f4f6fb"], acc: "#3f7cc4", accD: "#2a5a96", accS: "#e6f0fb", accM: "#a9c8ee", bar: "#1c2c44", bar2: "#2b405e" },
-    glassLavender: { name: "Glass · Lavender", kind: "glass", glass: true, grad: ["#c4b2f1", "#f6f5fb"], acc: "#7b62c9", accD: "#573fa3", accS: "#efeafb", accM: "#c4b5f0", bar: "#2a2340", bar2: "#3c3358" }
+    glassLavender: { name: "Glass · Lavender", kind: "glass", glass: true, grad: ["#c4b2f1", "#f6f5fb"], acc: "#7b62c9", accD: "#573fa3", accS: "#efeafb", accM: "#c4b5f0", bar: "#2a2340", bar2: "#3c3358" },
+    /* dark Glass themes (always dark): panel / card = the see-through tint of the side panels and cards */
+    glassEmerald: { name: "Glass · Emerald night", kind: "glass, dark", glass: true, dark: true, grad: ["#0f8a5f", "#0b1630"], acc: "#1f9e6e", bar: "#0b2a24", bar2: "#14423a", panel: "rgba(10,26,34,.46)", card: "rgba(10,26,34,.52)" },
+    glassSunset: { name: "Glass · Sunset violet", kind: "glass, dark", glass: true, dark: true, grad: ["#e2601f", "#2a1546"], acc: "#d9662a", bar: "#2a1438", bar2: "#3f2252", panel: "rgba(34,16,40,.46)", card: "rgba(34,16,40,.52)" },
+    glassNavy: { name: "Glass · Gold navy", kind: "glass, dark", glass: true, dark: true, grad: ["#d9a400", "#101c3d"], acc: "#b8870b", bar: "#0f1a36", bar2: "#1b2a50", panel: "rgba(14,22,48,.46)", card: "rgba(14,22,48,.52)" }
   };
+  /* Light / Dark / Auto (follows the computer). Glass themes bring their own: the light ones are always light, the dark ones always dark. */
+  const sysDark = window.matchMedia ? matchMedia("(prefers-color-scheme: dark)") : null;
+  LB.isDark = t => (t.glass ? !!t.dark : LB.S.mode === "dark" || (LB.S.mode === "auto" && !!(sysDark && sysDark.matches)));
+  if (sysDark && sysDark.addEventListener) sysDark.addEventListener("change", () => { if (LB.S.mode === "auto") LB.render(); });
   /* colour only in the top-left corner, the base colour from about the middle on (same recipe as Project Hub and Hedgehog) */
   LB.glassGrad = t => "linear-gradient(135deg, " + t.grad[0] + " 0%, color-mix(in srgb, " + t.grad[0] + " 45%, " + t.grad[1] + ") 20%, " + t.grad[1] + " 50%, " + t.grad[1] + " 100%)";
   LB.applyTheme = function () {
     const t = LB.THEMES[LB.S.theme] || LB.THEMES.indigo, st = document.documentElement.style;
-    st.setProperty("--acc", t.acc); st.setProperty("--acc-d", t.accD); st.setProperty("--acc-s", t.accS);
-    st.setProperty("--acc-m", t.accM); st.setProperty("--bar", t.bar); st.setProperty("--bar-2", t.bar2);
+    st.setProperty("--acc", t.acc); st.setProperty("--acc-d", t.accD || "color-mix(in srgb, " + t.acc + " 75%, #000)"); st.setProperty("--acc-s", t.accS || "color-mix(in srgb, " + t.acc + " 12%, #fff)");
+    st.setProperty("--acc-m", t.accM || "color-mix(in srgb, " + t.acc + " 50%, #fff)"); st.setProperty("--bar", t.bar); st.setProperty("--bar-2", t.bar2);
     document.body.classList.toggle("glass", !!t.glass);
     if (t.glass) { st.setProperty("--grad", LB.glassGrad(t)); st.setProperty("--grad-base", t.grad[1]); } else { st.removeProperty("--grad"); st.removeProperty("--grad-base"); }
+    if (t.panel) { st.setProperty("--glass-panel", t.panel); st.setProperty("--glass-card", t.card); }
+    /* dark mode: body.dark switches on dark.css. The accent shades are set on #app only, so the PDF (#print) keeps the light ones. */
+    const dark = LB.isDark(t), app = document.getElementById("app"); document.body.classList.toggle("dark", dark);
+    if (app) {
+      const as = app.style, a = t.accDark || t.acc;
+      if (dark) { as.setProperty("--acc", a); as.setProperty("--acc-s", "color-mix(in srgb, " + a + " 24%, #1a1f2b)"); as.setProperty("--acc-m", "color-mix(in srgb, " + a + " 55%, #1a1f2b)"); as.setProperty("--acc-d", "color-mix(in srgb, " + a + " 50%, #ffffff)"); }
+      else ["--acc", "--acc-s", "--acc-m", "--acc-d"].forEach(k => as.removeProperty(k));
+    }
     const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = t.bar;
   };
 
@@ -106,7 +122,10 @@
 
   /* ---------- popovers & dialogs ---------- */
   function themePop() {
-    return '<div class="pop" style="width:300px"><div class="h">Colors</div><div class="muted sm">One accent color, or an accent plus a matching top bar.</div>' +
+    const mode = LB.S.mode || "light", glass = (LB.THEMES[LB.S.theme] || {}).glass;
+    const seg = '<div class="row" style="gap:8px"><span class="lbl grow">Appearance</span><span class="seg" role="group" aria-label="Appearance">' + [["light", "☀ Light"], ["dark", "☾ Dark"], ["auto", "Auto"]].map(([k, l]) => '<button class="btn sm' + (mode === k ? " on" : "") + '" data-a="setMode" data-m="' + k + '" aria-pressed="' + (mode === k) + '"' + (k === "auto" ? ' title="Follow the computer: dark when macOS / Windows is in dark mode"' : "") + ">" + l + "</button>").join("") + "</span></div>" +
+      (glass ? '<div class="muted sm">Glass themes have their own light or dark look; Appearance applies to the other colors.</div>' : "");
+    return '<div class="pop" style="width:300px"><div class="h">Colors</div>' + seg + '<div class="muted sm">One accent color, or an accent plus a matching top bar.</div>' +
       Object.keys(LB.THEMES).map(k => { const t = LB.THEMES[k]; return '<button class="themeopt ' + (LB.S.theme === k ? "on" : "") + '" data-a="setTheme" data-k="' + k + '"><span class="sw' + (t.glass ? " swg" : "") + '"' + (t.glass ? ' style="background:' + LB.glassGrad(t) + '"' : "") + '><i style="background:' + t.acc + '"></i><i style="background:' + t.bar + '"></i></span><span class="grow">' + t.name + '</span><span class="muted" style="font-size:11px;font-weight:500">' + t.kind + "</span></button>"; }).join("") + "</div>";
   }
   function filePop() {
@@ -153,6 +172,7 @@
   A.pop = el => { LB.tmp.pop = LB.tmp.pop === el.dataset.p ? "" : el.dataset.p; LB.render(); };
   A.closeModal = (el, ev) => { if (el.dataset.force || ev.target === el) { LB.tmp.pop = ""; LB.render(); } };
   A.setTheme = el => { LB.S.theme = el.dataset.k; LB.tmp.pop = ""; LB.save(); LB.render(); };
+  A.setMode = el => { LB.S.mode = el.dataset.m; LB.save(); LB.render(); };
   A.fileChoose = () => LB.chooseFolder();
   A.fileReconnect = () => LB.reconnect();
   A.fileUnlink = async () => { await LB.unlinkFolder(); LB.render(); };

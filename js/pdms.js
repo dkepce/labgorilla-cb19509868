@@ -146,7 +146,7 @@
     ["P", "V", "R", "C", "S", "col"].forEach(k => { R.loc[k] = gl.getUniformLocation(pr, k); });
     R.load = geo => { R.geo = geo; gl.bindBuffer(gl.ARRAY_BUFFER, R.bp); gl.bufferData(gl.ARRAY_BUFFER, geo.pts, gl.STATIC_DRAW); gl.bindBuffer(gl.ARRAY_BUFFER, R.bn); gl.bufferData(gl.ARRAY_BUFFER, geo.nrm, gl.STATIC_DRAW); };
     R.draw = (cam, color, axo) => {
-      const w = canvas.width, h = canvas.height; gl.viewport(0, 0, w, h); gl.clearColor(0.965, 0.97, 0.985, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      const w = canvas.width, h = canvas.height; gl.viewport(0, 0, w, h); if (R.dark) gl.clearColor(0.129, 0.153, 0.212, 1); else gl.clearColor(0.965, 0.97, 0.985, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
       const geo = R.geo; if (!geo) return; gl.enable(gl.DEPTH_TEST); gl.useProgram(pr);
       const c = [0, 1, 2].map(d => (geo.mn[d] + geo.mx[d]) / 2), rad = Math.hypot(geo.mx[0] - geo.mn[0], geo.mx[1] - geo.mn[1], geo.mx[2] - geo.mn[2]) / 2 || 1;
       const V = mul(tr(cam.px, cam.py, -cam.dist), mul(rotX(-cam.pitch), rotZ(cam.yaw)));
@@ -180,6 +180,7 @@
     const c = cardOf(v.card); if (!c || !v.r.geo) { v.r.draw(newCam(), ""); return; }
     const box = v.cv.parentNode, dpr = window.devicePixelRatio || 1;
     if (box) { const w = Math.round(box.clientWidth * dpr), h = Math.round(box.clientHeight * dpr); if (w && h && (v.cv.width !== w || v.cv.height !== h)) { v.cv.width = w; v.cv.height = h; } }
+    v.r.dark = document.body.classList.contains("dark");   // background follows dark mode (the PDF snapshot stays light)
     v.r.draw(camOf(c, v.fid), c.color, isAxo(c));
   }
   /* projection: saved on the card (also used for the PDF); on a locked entry it can still be switched for viewing */
