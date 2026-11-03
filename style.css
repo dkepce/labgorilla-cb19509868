@@ -304,3 +304,31 @@ button.exp:hover{filter:brightness(.96)}
 .ref{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--line2)}
 .ref .rb{flex-grow:1;min-width:0;display:flex;flex-direction:column;gap:5px;font-size:13px;line-height:1.45}
 .ref .rb input[type=text]{font-size:12px}
+
+/* compact entry header (2026-11): code + title + actions on one row; date sits beside the tabs */
+.main{padding:10px 20px 0;gap:8px}
+.ehead{align-items:center;gap:10px}
+.ehead .ecode{flex-shrink:0;font-size:12px;color:var(--mute);background:#f0f1f7;border-radius:6px;padding:2px 7px}
+.ehead .etitle{flex:1;min-width:0;margin:0;font-size:20px}
+.ehead .badge{flex-shrink:0}
+.ehead .btn{flex-shrink:0}
+.secs{align-items:center;gap:5px}
+.secs .pill{padding:3px 11px;font-size:12px}
+.secs .meta{gap:8px}
+.secs .meta .ename{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.empty-cards{border:1px dashed #c9cde0;border-radius:12px;padding:18px;text-align:center;font-size:13px}
+
+/* card toolbar (dock) at the far right of the Notebook */
+.dock{width:50px;flex-shrink:0;background:#fff;border-left:1px solid var(--line);display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}
+.dkh{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--mute);margin-bottom:3px;cursor:default}
+.dksep{width:24px;height:1px;background:var(--line2);margin:4px 0;flex-shrink:0}
+.dk{position:relative;flex-shrink:0;width:36px;height:36px;padding:0;border-radius:9px;border:1px solid transparent;background:transparent;color:var(--soft);display:flex;align-items:center;justify-content:center;transition:background .1s,color .1s}
+.dk:hover:not(:disabled){background:var(--acc-s);border-color:var(--acc-m);color:var(--acc-d)}
+.dk.on{color:var(--acc-d);background:var(--acc-s)}
+.dk.on::before{content:"";position:absolute;left:-7px;top:9px;bottom:9px;width:3px;border-radius:2px;background:var(--acc)}
+.dk i{position:absolute;top:-2px;right:-3px;min-width:15px;height:15px;padding:0 3px;border-radius:99px;background:var(--acc);color:#fff;font:700 9.5px/15px var(--sans,inherit);font-style:normal;text-align:center}
+.dk:disabled{opacity:.45;cursor:default}
+.dktip{position:fixed;z-index:1000;max-width:250px;background:var(--ink);color:#fff;font-size:12px;line-height:1.4;padding:6px 10px;border-radius:7px;pointer-events:none;opacity:0;transition:opacity .1s;box-shadow:0 4px 14px rgba(0,0,0,.18)}
+.dktip.on{opacity:1}
+.lcard.flash{box-shadow:0 0 0 3px var(--acc-m)}
+.lcard{transition:box-shadow .4s}

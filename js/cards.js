@@ -216,21 +216,37 @@
 
   function cardView(e, c, dis) {
     const T = TYPES[c.type], P = pathOf(e, c), list = extra(e), i = list.indexOf(c);
-    return '<div class="card lcard"><div class="row"><span class="cicon">' + icon(c.type, 22) + '</span><input type="text" class="ctitle" aria-label="Card title" data-b="' + P + '.title" data-live="' + P + '.title" value="' + esc(c.title) + '" ' + dis + ' autocomplete="off"><span class="grow"></span>' +
+    return '<div class="card lcard" data-cardid="' + c.id + '"><div class="row"><span class="cicon">' + icon(c.type, 22) + '</span><input type="text" class="ctitle" aria-label="Card title" data-b="' + P + '.title" data-live="' + P + '.title" value="' + esc(c.title) + '" ' + dis + ' autocomplete="off"><span class="grow"></span>' +
       '<button class="link sm" data-a="cardMove" data-card="' + c.id + '" data-d="-1" ' + (dis || i === 0 ? "disabled" : "") + ' title="Move up" aria-label="Move up">↑</button><button class="link sm" data-a="cardMove" data-card="' + c.id + '" data-d="1" ' + (dis || i === list.length - 1 ? "disabled" : "") + ' title="Move down" aria-label="Move down">↓</button>' +
       '<button class="link sm" style="color:#b42318" data-a="rmCard" data-card="' + c.id + '" ' + dis + ' title="Remove this card">Remove</button></div>' +
       T.body(e, c, P, dis) +
       '<textarea rows="2" aria-label="Notes on this card" placeholder="Notes on this card…" data-b="' + P + '.note" data-log="Edited card notes" ' + dis + ">" + esc(c.note) + "</textarea></div>";
   }
-  /* the tiles at the top of the Procedure tab, then every added card */
+  /* every added card on the Procedure tab */
   LB.cardsList = e => extra(e).filter(c => TYPES[c.type]).map(c => cardView(e, c, e.locked ? "disabled" : "")).join("");
-  LB.cardsPicker = function (e) {
+  /* the card toolbar: a narrow dock at the far right of the Notebook. Built-in cards switch on/off, the others add a card. */
+  LB.cardsDock = function (e) {
     const dis = e.locked ? "disabled" : "", cd = LB.cardsOf(e), list = extra(e);
-    const tile = (key, label, desc, on, count) => '<button class="tile' + (on ? " on" : "") + '" data-a="' + (key === "procedure" || key === "chip" ? "tileBuiltin" : "addCard") + '" data-t="' + key + '" data-card="' + key + '" ' + dis + ' aria-pressed="' + (on ? "true" : "false") + '"><span class="ti">' + icon(key === "procedure" ? "steps" : key) + '</span><b>' + label + '</b><span class="td">' + desc + '</span><span class="tc">' + (key === "procedure" || key === "chip" ? (on ? "✓ On" : "+ Add") : count ? "✓ " + count + " added · + another" : "+ Add") + "</span></button>";
-    const tiles = tile("procedure", "Procedure steps", "Checklist with step timers", cd.procedure) + tile("chip", "Chip loading map", "Chamber positions and contents", cd.chip) +
-      Object.keys(TYPES).map(k => tile(k, TYPES[k].label, TYPES[k].desc, list.some(c => c.type === k), list.filter(c => c.type === k).length)).join("");
-    return '<div class="picker"><div class="row wrap"><b>Cards for this experiment</b><span class="muted sm">' + (e.locked ? "Unlock the entry to add or remove cards." : "Tap a tile to add a card. Added cards appear below and are part of the PDF.") + '</span></div><div class="tiles">' + tiles + "</div></div>";
+    const btn = (key, label, desc, on, count) => {
+      const builtin = key === "procedure" || key === "chip", tip = label + " — " + desc + (e.locked ? " (unlock the entry to add cards)" : builtin ? (on ? " · click to hide" : " · click to show") : count ? " · " + count + " added, click to add another" : " · click to add");
+      return '<button class="dk' + (on ? " on" : "") + '" data-a="' + (builtin ? "tileBuiltin" : "addCard") + '" data-t="' + key + '" ' + dis + ' aria-pressed="' + (on ? "true" : "false") + '" aria-label="' + esc(tip) + '" data-tip="' + esc(tip) + '">' + icon(key === "procedure" ? "steps" : key, 20) + (count ? "<i>" + count + "</i>" : "") + "</button>";
+    };
+    return '<aside class="dock" aria-label="Lab cards"><span class="dkh" data-tip="Lab cards: they appear on the Procedure tab and go into the PDF">Cards</span>' + btn("procedure", "Procedure steps", "Checklist with step timers", cd.procedure) + btn("chip", "Chip loading map", "Chamber positions and contents", cd.chip) +
+      '<span class="dksep"></span>' + Object.keys(TYPES).map(k => { const n = list.filter(c => c.type === k).length; return btn(k, TYPES[k].label, TYPES[k].desc, n > 0, n); }).join("") + "</aside>";
   };
+  /* tooltips for the dock (a native title would be slow and plain) */
+  const tipEl = document.createElement("div"); tipEl.className = "dktip"; tipEl.setAttribute("role", "tooltip"); document.body.appendChild(tipEl);
+  document.addEventListener("mouseover", ev => {
+    const t = ev.target.closest && ev.target.closest(".dock [data-tip]"); if (!t) { tipEl.classList.remove("on"); return; }
+    const r = t.getBoundingClientRect(); tipEl.textContent = t.dataset.tip; tipEl.classList.add("on");
+    tipEl.style.top = Math.max(8, Math.min(window.innerHeight - tipEl.offsetHeight - 8, r.top + r.height / 2 - tipEl.offsetHeight / 2)) + "px"; tipEl.style.right = (window.innerWidth - r.left + 8) + "px";
+  });
+  /* show the Procedure tab (switching it on if this entry had it off) and scroll to a card */
+  function showProcedure(e, cardId) {
+    const cd = LB.cardsOf(e); if (!cd.tabProcedure) cd.tabProcedure = true; LB.ui.sec = 2; LB.saveUI();
+    tipEl.classList.remove("on"); LB.save(); LB.render();
+    const n = cardId && document.querySelector('[data-cardid="' + cardId + '"]'); if (n) { n.scrollIntoView({ behavior: "smooth", block: "start" }); n.classList.add("flash"); setTimeout(() => n.classList.remove("flash"), 1400); }
+  }
   /* make sure every entry has a clean list of cards (also after a backup is restored) */
   const baseFix = LB.fixData;
   LB.fixData = function () { baseFix(); Object.values(LB.D.entries).forEach(e => { e.extra = (e.extra || []).filter(LB.fixCard); }); };
@@ -249,8 +265,8 @@
 
   /* ---------- actions ---------- */
   const log = (e, m) => LB.log(e, m);
-  A.addCard = el => { const e = live(); if (!e) return; const c = LB.newCard(el.dataset.t); extra(e).push(c); log(e, "Added card: " + TYPES[c.type].label); LB.save(); LB.render(); LB.toast(TYPES[c.type].label + " added below."); };
-  A.tileBuiltin = el => { const e = live(); if (!e) return; const cd = LB.cardsOf(e), k = el.dataset.t; cd[k] = !cd[k]; log(e, cd[k] ? "Added card: " + (k === "chip" ? "Chip loading map" : "Procedure steps") : "Hid card: " + (k === "chip" ? "Chip loading map" : "Procedure steps")); LB.save(); LB.render(); };
+  A.addCard = el => { const e = live(); if (!e) return; const c = LB.newCard(el.dataset.t); extra(e).push(c); log(e, "Added card: " + TYPES[c.type].label); showProcedure(e, c.id); LB.toast(TYPES[c.type].label + " added."); };
+  A.tileBuiltin = el => { const e = live(); if (!e) return; const cd = LB.cardsOf(e), k = el.dataset.t; cd[k] = !cd[k]; log(e, cd[k] ? "Added card: " + (k === "chip" ? "Chip loading map" : "Procedure steps") : "Hid card: " + (k === "chip" ? "Chip loading map" : "Procedure steps")); showProcedure(e, null); };
   A.rmCard = el => {
     const e = live(), c = e && cardById(el.dataset.card); if (!c) return;
     if (TYPES[c.type].data(c) && !confirm("Remove “" + c.title + "” from this entry? What you entered in it is deleted.")) return;

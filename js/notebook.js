@@ -47,11 +47,16 @@
   }
   function head(e) {
     const P = "D.entries." + e.id, x = LB.expOf(e), dis = e.locked ? "disabled" : "", en = enteredLabel(e);
-    return '<div class="ehead"><div class="t"><div class="meta"><span class="mono">' + esc(e.code) + "</span>" + (x ? "<span>" + esc(x.name) + "</span>" : "") +
-      '<label>Experiment date <input type="date" data-b="' + P + '.date" data-act="entryDate" value="' + e.date + '" ' + dis + '></label><span class="' + en[1] + '" style="' + (en[1] ? "" : "") + '">' + en[0] + "</span></div>" +
-      '<input type="text" class="etitle" aria-label="Entry title" data-b="' + P + '.title" data-live="' + P + '.title" data-log="Renamed entry" value="' + esc(e.title) + '" ' + dis + " autocomplete=\"off\"></div>" +
-      '<span class="badge ' + (e.locked ? "ok" : "") + '" style="margin-top:8px">' + (e.locked ? "Signed &amp; locked" : "Draft") + "</span>" +
-      '<button class="btn" style="margin-top:4px" data-a="exportPdf">Export PDF</button><button class="btn dark" style="margin-top:4px" data-a="toggleLock">' + (e.locked ? "Unlock" : "Sign &amp; lock") + "</button></div>";
+    /* one compact row: code + title on the left, status and actions on the right; date and "entered" sit beside the tabs (secBar) */
+    return '<div class="ehead"><span class="mono ecode" title="' + esc(x ? x.name : "") + '">' + esc(e.code) + "</span>" +
+      '<input type="text" class="etitle" aria-label="Entry title" data-b="' + P + '.title" data-live="' + P + '.title" data-log="Renamed entry" value="' + esc(e.title) + '" ' + dis + ' autocomplete="off">' +
+      '<span class="badge ' + (e.locked ? "ok" : "") + '">' + (e.locked ? "Signed &amp; locked" : "Draft") + "</span>" +
+      '<button class="btn sm" data-a="exportPdf">Export PDF</button><button class="btn sm dark" data-a="toggleLock">' + (e.locked ? "Unlock" : "Sign &amp; lock") + "</button></div>";
+  }
+  function metaLine(e) {
+    const P = "D.entries." + e.id, x = LB.expOf(e), dis = e.locked ? "disabled" : "", en = enteredLabel(e);
+    return '<div class="meta">' + (x ? '<span class="ename" title="' + esc(LB.expCode(x) + " · " + x.name) + '">' + esc(x.name) + "</span>" : "") +
+      '<label>Date <input type="date" data-b="' + P + '.date" data-act="entryDate" value="' + e.date + '" ' + dis + '></label><span class="' + en[1] + '" title="' + esc(en[0]) + '">' + (en[1] ? en[0] : "same day") + "</span></div>";
   }
   /* cards an entry can switch off (data is kept; they are just hidden and left out of the PDF) */
   /* e.cards: which tabs an entry uses (materials, tabProcedure, tabResults, tabConclusion) and which cards sit on the
@@ -68,7 +73,7 @@
   }
   function secBar(e) {
     return '<div class="secs">' + visSecs(e).map((i, k) => '<button class="pill' + (LB.ui.sec === i ? " on" : "") + '" data-a="setSec" data-n="' + i + '">' + (k + 1) + " " + SEC[i] + (e.sn[i] ? " •" : "") + "</button>").join("") +
-      '<span class="addwrap"><button class="pill add' + (LB.tmp.tabMenu ? " on" : "") + '" data-a="tabMenu" title="Choose which tabs this entry uses" aria-haspopup="true" aria-expanded="' + (LB.tmp.tabMenu ? "true" : "false") + '">＋ Tabs</button>' + (LB.tmp.tabMenu ? tabMenu(e) : "") + "</span></div>";
+      '<span class="addwrap"><button class="pill add' + (LB.tmp.tabMenu ? " on" : "") + '" data-a="tabMenu" title="Choose which tabs this entry uses" aria-haspopup="true" aria-expanded="' + (LB.tmp.tabMenu ? "true" : "false") + '">＋ Tabs</button>' + (LB.tmp.tabMenu ? tabMenu(e) : "") + '</span><span class="grow"></span>' + metaLine(e) + "</div>";
   }
   function overview(e) {
     const P = "D.entries." + e.id, dis = e.locked ? "disabled" : "", x = LB.expOf(e), cd = cardsOf(e);
@@ -118,7 +123,8 @@
       '<datalist id="matlist">' + e.mats.map(m => { const it = LB.D.items.find(x => x.id === m.id); return it ? '<option value="' + esc(it.name) + '">' : ""; }).join("") + '</datalist>' +
       '<div class="lbl">Notes on loading</div>' + T(2, mp.note || "", 'aria-label="Notes on loading" data-b="' + P + '.map.note" data-log="Edited loading notes" ' + dis) + "</div>";
     const cd = cardsOf(e);
-    return LB.cardsPicker(e) + (cd.procedure || cd.chip ? '<div class="two">' + (cd.procedure ? steps : "") + (cd.chip ? map : "") + "</div>" : "") + LB.cardsList(e);
+    const none = !cd.procedure && !cd.chip && !LB.cardCount(e);
+    return (none ? '<div class="empty-cards muted">No cards on this tab yet. Add one from the card toolbar on the far right →</div>' : "") + (cd.procedure || cd.chip ?'<div class="two">' + (cd.procedure ? steps : "") + (cd.chip ? map : "") + "</div>" : "") + LB.cardsList(e);
   }
   function results(e) {
     const P = "D.entries." + e.id, dis = e.locked ? "disabled" : "";
@@ -172,7 +178,7 @@
     return '<aside class="right" data-scroll="right"><div class="tabs">' + TABS.map((t, i) => '<button class="tab' + (i === tab ? " on" : "") + '" data-a="setTab" data-n="' + i + '">' + t + "</button>").join("") + '</div><div class="col" style="gap:8px">' + body + "</div>" +
       '<div class="next"><div class="lbl">Next up</div>' + (up.length ? up.map(v => '<div class="row sm" style="align-items:baseline"><span class="mono" style="color:var(--acc-d);white-space:nowrap">' + U.fmt(v.date, false) + "</span><span>" + esc(v.title) + "</span></div>").join("") : '<div class="muted sm">Nothing planned.</div>') + '<button class="link sm" data-a="nav" data-v="calendar">Open calendar →</button></div></aside>';
   }
-  LB.views.notebook = () => side() + main() + right();
+  LB.views.notebook = () => side() + main() + right() + (LB.cur() ? LB.cardsDock(LB.cur()) : "");
 
   /* ---------- actions ---------- */
   const entryOK = () => { const e = LB.cur(); return e && !e.locked ? e : null; };
